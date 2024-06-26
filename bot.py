@@ -23,6 +23,7 @@ async def on_ready():
 #     if message.author == client.user:
 #         return
 
+# basic hello command
 @tree.command(
     name="hello",
     description="replies with hello",
