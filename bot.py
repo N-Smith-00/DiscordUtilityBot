@@ -54,5 +54,25 @@ async def rps(interaction: discord.Interaction, choice: str):
     else:
         await interaction.response.send_message(f'I chose {result[1].lower()}, you win')
 
+@tree.command(
+    name="counter_setup",
+    guild=discord.Object(id=1048911119584084018)
+)
+async def counter_setup(interaction: discord.Interaction, channel: int):
+    """setup for the counter game
+
+    Args:
+        interaction (discord.Interaction): _description_
+        channel (int): the ID of the channel the game will be played in (must turn on developer mode to see ID)
+    """
+    global counter_manager
+    counter_manager = games.Counter(channel, interaction.guild_id)
+
+@client.event
+async def on_message(message: discord.Message): 
+    if message.author != client.user:
+        # check for the counter game
+        counter_manager.counter(message)
+        
 
 client.run(TOKEN)
