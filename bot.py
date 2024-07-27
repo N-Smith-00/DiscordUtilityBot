@@ -2,6 +2,7 @@ import os, discord, json
 from discord import app_commands
 from dotenv import load_dotenv
 import commands.games as games
+import commands.moderation as mod
 
 load_dotenv()
 
@@ -12,6 +13,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 connected = False
+log_channel:discord.TextChannel = None
 
 @client.event
 async def on_ready():
@@ -40,6 +42,11 @@ async def on_message(message: discord.Message):
     if message.author != client.user:
         # check for the counter game
         await counter_manager.counter(message)
+
+@client.event
+async def on_audit_log_entry_create(entry:discord.AuditLogEntry):
+    if log_channel != None:
+        await mod.log(entry, log_channel)
 
 @tree.command(
         name="quit",
@@ -100,5 +107,24 @@ async def counter_info(interaction:discord.Interaction):
         await interaction.response.send_message(f"Current streak: {counter_manager.value} \nMax streak: {counter_manager.max}")
     else:
         await interaction.response.send_message('Counter not initialized, use "/counter_setup" to start it')
+
+@tree.command(
+    name="log_setup",
+    guild=discord.Object(id=1048911119584084018)
+)
+async def log_setup(interaction:discord.Interaction, channel:str):
+    """setup moderation logging
+
+    Args:
+        channel (str): the channel to send logs to
+    """
+    # check if channel is a valid text channel
+    if client.get_channel(channel) != None and client.get_channel(channel).type == discord.ChannelType.text:
+        global log_channel
+        log_channel = client.get_channel(channel)
+        await interaction.response.send_message(f"log has been set up in {log_channel.name}")
+    else:
+        await interaction.response.send_message("Channel could not be found, log has not been set up")
+
 
 client.run(TOKEN)
