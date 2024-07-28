@@ -27,15 +27,23 @@ async def on_ready():
     global counter_manager
     counter_manager = games.Counter(count["channel"], count["value"], count["max"])
 
+    # load mod log data
+    log_file = open("saves/moderation.json", "r")
+    file_cont = log_file.read()
+    log_file.close()
+    if (len(file_cont) > 0):
+        global log_channel
+        log_channel = client.get_channel(json.loads(file_cont)["log_channel"])
+
     global connected
     connected = True
 
 @client.event
 async def on_disconnect():
     print("disconnecting")
-    if connected:
-        if counter_manager:
-            await counter_manager.save()
+    if connected and counter_manager:
+        await counter_manager.save()
+        
 
 @client.event
 async def on_message(message: discord.Message): 
@@ -46,7 +54,7 @@ async def on_message(message: discord.Message):
 @client.event
 async def on_audit_log_entry_create(entry:discord.AuditLogEntry):
     if log_channel != None:
-        await mod.log(entry, log_channel)
+        await mod.log(client, entry, log_channel)
 
 @tree.command(
         name="quit",
@@ -112,17 +120,26 @@ async def counter_info(interaction:discord.Interaction):
     name="log_setup",
     guild=discord.Object(id=1048911119584084018)
 )
-async def log_setup(interaction:discord.Interaction, channel:str):
+async def log_setup(interaction:discord.Interaction, channel_id:str):
     """setup moderation logging
 
     Args:
-        channel (str): the channel to send logs to
+        channel_id (str): the channel to send logs to
     """
+    try:
+        channel_id = int(channel_id)
+    except ValueError:
+        interaction.response.send_message("Channel ID is not valid, please try again")
+        return
     # check if channel is a valid text channel
-    if client.get_channel(channel) != None and client.get_channel(channel).type == discord.ChannelType.text:
+    if client.get_channel(channel_id) != None and client.get_channel(channel_id).type == discord.ChannelType.text:
         global log_channel
-        log_channel = client.get_channel(channel)
-        await interaction.response.send_message(f"log has been set up in {log_channel.name}")
+        log_channel = client.get_channel(channel_id)
+        # store channel in file
+        m = open("saves/moderation.json", "w")
+        m.write(json.dumps({"log_channel": str(channel_id)}))
+        m.close()
+        await interaction.response.send_message(f"log has been set up in #{log_channel.name}")
     else:
         await interaction.response.send_message("Channel could not be found, log has not been set up")
 
